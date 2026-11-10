@@ -1,31 +1,52 @@
-# DPMG 训练代码
+# DPMG
 
-基于 Hist2ST 的全基因预训练与目标基因微调。默认目标基因为 GNAS、FASN、SCD、MYL12B、FN1。
-此目录只包含训练、数据读取、模型和训练后评估所需代码。
+DPMG 面向组织病理图像的目标基因空间表达预测。模型联合使用 H&E 图像块、空间坐标和邻域图，通过全基因预训练学习组织表征，再将编码器及目标基因对应的预测头参数迁移到目标基因微调任务。
 
-## 文件
+微调阶段使用 **FeatureGate 特征门控**、**基因加权回归**和**基因关系先验约束**，同时更新编码器与预测头。默认目标面板包含 **GNAS、FASN、SCD、MYL12B 和 FN1**。目标基因及先验权重分别由 TXT、CSV 文件配置。
+
+```text
+H&E 图像块 + 空间坐标 + 邻域图
+                 ↓
+         全基因监督预训练
+                 ↓
+    迁移编码器与目标基因预测头参数
+                 ↓
+      FeatureGate + 目标基因微调
+      基因加权回归 + 基因关系约束
+                 ↓
+         目标基因空间表达预测
+```
+
+## 代码结构
 
 | 文件 | 用途 |
 | --- | --- |
-| `HIST2ST_pretrain_finetune.py` | 主训练入口：全基因预训练 → 五基因微调 |
-| `run_train_folds.py` | 按折顺序运行完整 DPMG 模型，无消融组合 |
-| `HIST2ST_train.py` | 可选：从头直接训练基因、基因子集或通路预测模型 |
-| `HIST2ST.py` | 模型、FeatureGate 和损失函数 |
-| `dataset.py`, `predict.py` | 数据读取及训练后测试；predict.py 是训练依赖，需保留 |
-| `gcn.py`, `transformer.py`, `graph_construction.py`, `NB_module.py` | 网络组件 |
-| `utils.py`, `pathway_utils.py`, `disease_prior_utils.py` | 数据及先验工具；均为训练依赖 |
-| `recommended_gene_list_her2st.txt`, 两个 `disease_*.csv` | 目标基因和人工指定的先验权重 |
+| `train_dpmg_two_stage.py` | 主训练入口：全基因预训练与目标基因微调 |
+| `train_dpmg_folds.py` | 按指定折次依次运行完整 DPMG 模型 |
+| `train_dpmg.py` | 可选的直接训练入口，支持基因、基因子集或通路预测 |
+| `dpmg_model.py` | DPMG 模型、FeatureGate 和训练损失 |
+| `dpmg_data.py` | 数据读取、表达量处理和图像块提取 |
+| `dpmg_evaluation.py` | 数据集构建和训练后评估 |
+| `dpmg_attention.py`, `dpmg_graph_layers.py`, `dpmg_graph.py` | 注意力、图网络与邻域图构建 |
+| `dpmg_count_losses.py` | 可选的计数分布损失 |
+| `dpmg_data_utils.py`, `dpmg_targets.py`, `dpmg_priors.py` | 数据处理、目标定义和先验工具 |
+| `recommended_gene_list_her2st.txt` | 默认目标基因列表 |
+| `disease_gene_prior_her2st1.csv`, `disease_gene_relation_her2st1.csv` | 人工指定的基因权重与基因关系权重 |
 
 ## 环境与数据
 
-本机可用环境为 `D:\Anaconda\envs\hist2st\python.exe`。默认 `python` 指向 Anaconda 基础环境，缺少训练依赖。
-检查时 hist2st 使用 PyTorch 2.8.0+cpu、torchvision 0.23.0、Lightning 2.6.0；当前无法使用 CUDA。
-`requirements.txt` 记录本机直接依赖版本，不是完整的跨平台环境锁文件。新环境先按目标设备安装匹配的 PyTorch 与 torchvision，再运行 `python -m pip install -r requirements.txt`。
+使用已安装匹配 PyTorch / torchvision 的 Python 环境，然后安装其余依赖：
 
-`--data_root` 指向以下目录，不需要把数据复制进代码目录：
+```bash
+python -m pip install -r requirements.txt
+```
+
+已检查的版本组合为 PyTorch 2.8.0、torchvision 0.23.0 和 PyTorch Lightning 2.6.0。`requirements.txt` 记录其余直接依赖版本。正式 GPU 训练需要安装适配设备的 CUDA 版 PyTorch。
+
+将 HER2ST 数据及建模基因列表放在以下目录，或通过 `--data_root` 指定实际位置：
 
 ```text
-data_root/
+data/
   her_hvg_cut_1000.npy
   her2st/data/
     ST-cnts/<切片>.tsv
@@ -34,73 +55,71 @@ data_root/
     ST-pat/lbl/<切片>_labeled_coordinates.tsv
 ```
 
-本机数据目录为 `D:\Hist2ST-main_gene_subset_pathway_pl2_ready\Hist2ST-main\data`。
-全基因数以 npy 内容为准，不根据文件名推断。表达量先在全基因集上进行文库大小归一化及 log 转换，再取目标基因。
+`her_hvg_cut_1000.npy` 需使用与实验匹配的基因列表；当前主配置使用 785 个基因。表达量先在建模基因集上做文库大小归一化和 log 转换，再选取目标基因。
 
-## 训练指令（Windows PowerShell）
+## 训练
 
-进入本目录，激活已有环境：
+在仓库根目录运行。以下命令均为单行，可用于 PowerShell 或 Bash；将 `--data_root ./data` 替换为实际数据目录。
 
-```powershell
-Set-Location 'D:\Hist2ST-main_gene_subset_pathway_pl2_ready\新建文件夹'
-conda activate hist2st
+单折训练：
+
+```bash
+python train_dpmg_folds.py --folds 0 --gpu 0 --data_root ./data --output_dir results/dpmg_main
 ```
 
-主实验，单折（fold 0）：
+完整 32 折训练：
 
-```powershell
-python run_train_folds.py --folds 0 --gpu 0 --data_root '../Hist2ST-main/data' --output_dir results/dpmg_main
+```bash
+python train_dpmg_folds.py --folds 0-31 --gpu 0 --data_root ./data --output_dir results/dpmg_main_32folds
 ```
 
-完整 32 折，依次运行相同模型：
+预览每折训练命令：
 
-```powershell
-python run_train_folds.py --folds 0-31 --gpu 0 --data_root '../Hist2ST-main/data' --output_dir results/dpmg_main_32folds
+```bash
+python train_dpmg_folds.py --folds 0-31 --data_root ./data --dry_run
 ```
 
-只检查将执行的命令，不加载数据、不训练：
+主配置使用随机种子 12000、学习率 1e-5、预训练 100 轮和微调 100 轮。预训练学习全基因表达表征；微调启用 FeatureGate、基因加权回归及权重为 0.001 的基因关系损失，普通相关性损失权重为 0。
 
-```powershell
-python run_train_folds.py --folds 0-31 --data_root '../Hist2ST-main/data' --dry_run
+直接调用两阶段入口并显式设置参数：
+
+```bash
+python train_dpmg_two_stage.py --data her2st --gpu 0 --fold 0 --seed 12000 --data_root ./data --gene_list_file recommended_gene_list_her2st.txt --pretrain_epochs 100 --finetune_epochs 100 --lr 1e-5 --dropout 0.2 --zinb 0 --nb F --bake 0 --corr_lambda 0 --use_feature_gate T --attn_reduction 4 --use_disease_prior T --disease_prior_file disease_gene_prior_her2st1.csv --disease_relation_file disease_gene_relation_her2st1.csv --prior_corr_lambda 0.001 --neighbor 4 --prune Grid --policy mean --tag 5-7-2-8-4-16-32 --save_model T --output_dir results/dpmg_main
 ```
 
-如果 `conda activate` 不可用，将上述 `python` 换成 `& 'D:\Anaconda\envs\hist2st\python.exe'`。
-在 Linux 服务器上进入代码目录，使用已装好依赖的 `python`，将 `--data_root` 改为服务器实际数据目录。
+可选的直接训练：
 
-主实验入口的等价完整参数如下（单行可在 PowerShell 或 Bash 执行）：
-
-```text
-python HIST2ST_pretrain_finetune.py --data her2st --gpu 0 --fold 0 --seed 12000 --data_root ../Hist2ST-main/data --gene_list_file recommended_gene_list_her2st.txt --pretrain_epochs 100 --finetune_epochs 100 --lr 1e-5 --dropout 0.2 --zinb 0 --nb F --bake 0 --corr_lambda 0 --use_feature_gate T --attn_reduction 4 --use_disease_prior T --disease_prior_file disease_gene_prior_her2st1.csv --disease_relation_file disease_gene_relation_her2st1.csv --prior_corr_lambda 0.001 --neighbor 4 --prune Grid --policy mean --tag 5-7-2-8-4-16-32 --save_model T --output_dir results/dpmg_main
+```bash
+python train_dpmg.py --data her2st --fold 0 --gpu 0 --seed 12000 --epochs 200 --data_root ./data --task_type gene_subset --gene_list_file recommended_gene_list_her2st.txt --corr_lambda 0 --use_feature_gate T --use_disease_prior T --prior_corr_lambda 0.001 --save_model T --logger results/direct
 ```
 
-主配置：预训练 100 轮、微调 100 轮，学习率 1e-5，seed=12000。预训练关闭 FeatureGate、相关性损失及疾病先验；微调启用 FeatureGate、基因加权回归及权重为 0.001 的基因关系损失。普通相关性损失权重为 0。两阶段都只使用训练切片，最后在留出的测试切片评估，无验证集选择最佳权重。
+## 结果与模型
 
-可选直接训练（不经过全基因预训练，因此与主实验是不同训练流程）：
+两阶段训练结果保存在 `output_dir/fold_XX/`：
 
-```text
-python HIST2ST_train.py --data her2st --fold 0 --gpu 0 --seed 12000 --epochs 200 --data_root ../Hist2ST-main/data --task_type gene_subset --gene_list_file recommended_gene_list_her2st.txt --corr_lambda 0 --use_feature_gate T --use_disease_prior T --prior_corr_lambda 0.001 --save_model T --logger results/direct
+- `final_model.ckpt`：最终微调模型及构造参数、优化器状态。
+- `run_config.json`：本次训练参数。
+- `summary.csv`、`per_gene_pearson.csv`：总体与逐基因相关性指标。
+- `pred_matrix.csv`、`gt_matrix.csv`：预测和真实表达矩阵。
+- `gene_expression_diagnostics.csv`：表达量统计。
+
+两阶段使用同一训练划分，训练结束后在留出的测试切片上评估。保存的是最终模型；测试结果不参与模型参数选择。`--save_model F` 可关闭模型保存。
+
+加载模型：
+
+```python
+from dpmg_model import DPMG
+
+model = DPMG.load_from_checkpoint(
+    "results/dpmg_main/fold_00/final_model.ckpt", map_location="cpu"
+)
+model.eval()
 ```
 
-## 划分和输出
+直接训练的输出位于 TensorBoard 创建的 `version_*` 目录下，其中 `results_final/` 保存评估结果。
+多折入口遇到非空的折输出目录会停止；中断后可用 `--folds` 指定剩余折，失败折使用新的输出目录。
+数据、训练结果和模型权重由 `.gitignore` 排除。
 
-HER2ST 固定排除 A5、F1、F2、F3；fold 0–31 对应：
+## 致谢
 
-```text
-A1 A2 A3 A4 A6 B1 B2 B3 B4 B5 B6 C1 C2 C3 C4 C5 C6
-D1 D2 D3 D4 D5 D6 E1 E2 E3 G1 G2 G3 H1 H2 H3
-```
-
-每折训练 31 张切片、测试 1 张；预训练和微调使用同一划分。这是按切片留一，不是按患者留一。
-`HER2ST_SPLIT_MODE` 环境变量不会改变此划分。
-
-两阶段训练结果位于 `output_dir/fold_XX/`，包括 `final_model.ckpt`、`run_config.json`、`summary.csv`、`per_gene_pearson.csv`、预测和真值矩阵、表达诊断。
-默认保存最终微调模型；`--save_model F` 可关闭保存。checkpoint 为包含模型参数、构造参数和优化器状态的 Lightning 格式。测试结果是训练结束的评估，不参与参数选择。
-直接训练的输出位于 TensorBoard 创建的 `version_*` 目录下，指标在 `results_final/`，checkpoint 在对应版本目录下。
-
-多折入口遇到非空折输出目录会停止，避免覆盖；中断后用 `--folds` 指定尚未运行的折，失败折使用新的输出目录。它不支持从中断的 epoch 恢复。
-
-数据、训练结果和模型权重已通过 `.gitignore` 排除，适合后续上传源代码。
-
-## 来源
-
-模型基于 [Hist2ST](https://github.com/biomed-AI/Hist2ST)，数据来自 [HER2ST](https://github.com/almaan/her2st)。使用代码与数据时请遵守原项目许可并引用原作者工作。
+编码器实现参考 [Hist2ST](https://github.com/biomed-AI/Hist2ST)，实验数据来自 [HER2ST](https://github.com/almaan/her2st)。使用相关代码和数据时，请遵守原项目许可并引用相应工作。

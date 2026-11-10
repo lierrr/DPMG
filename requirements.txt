@@ -1,4 +1,4 @@
-# Direct dependencies observed in the local hist2st environment.
+# Direct dependencies for DPMG training.
 # Install a matching torch/torchvision pair separately for the training device.
 pytorch-lightning==2.6.0
 numpy==1.26.4

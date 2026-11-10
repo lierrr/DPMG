@@ -5,10 +5,10 @@ import numpy as np
 import pytorch_lightning as pl
 import torchvision.transforms as tf
 
-from gcn import *
-from NB_module import *
-from transformer import *
-from disease_prior_utils import weighted_gene_mse, weighted_pair_corr_loss
+from dpmg_graph_layers import *
+from dpmg_count_losses import *
+from dpmg_attention import *
+from dpmg_priors import weighted_gene_mse, weighted_pair_corr_loss
 
 from scipy.stats import pearsonr, spearmanr
 from torch.utils.data import DataLoader
@@ -172,7 +172,7 @@ class ViT(nn.Module):
         return x
 
 
-class Hist2ST(pl.LightningModule):
+class DPMG(pl.LightningModule):
     def __init__(self, learning_rate=1e-5, fig_size=112, label=None,
                  dropout=0.2, n_pos=64, kernel_size=5, patch_size=7, n_genes=785,
                  depth1=2, depth2=8, depth3=4, heads=16, channel=32,

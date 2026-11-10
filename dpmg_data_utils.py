@@ -14,7 +14,6 @@ from PIL import Image
 from sklearn import preprocessing
 from sklearn.cluster import KMeans
 Image.MAX_IMAGE_PIXELS = 933120000
-# from dataset import MARKERS
 BCELL = ['CD19', 'CD79A', 'CD79B', 'MS4A1']
 TUMOR = ['FASN']
 CD4T = ['CD4']

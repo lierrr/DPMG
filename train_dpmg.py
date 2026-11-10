@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 
-from disease_prior_utils import load_gene_weights, load_gene_relation_matrix
-from utils import *
-from HIST2ST import *
-from predict import *
+from dpmg_priors import load_gene_weights, load_gene_relation_matrix
+from dpmg_data_utils import *
+from dpmg_model import *
+from dpmg_evaluation import *
 from torch.utils.data import DataLoader
 from pytorch_lightning.loggers import TensorBoardLogger
 
@@ -20,7 +20,7 @@ parser.add_argument('--gpu', type=int, default=0, help='the id of gpu.')
 parser.add_argument('--fold', type=int, default=5, help='dataset fold.')
 parser.add_argument('--seed', type=int, default=12000, help='random seed.')
 parser.add_argument('--epochs', type=int, default=200, help='number of epochs.')
-parser.add_argument('--name', type=str, default='hist2ST', help='prefix name.')
+parser.add_argument('--name', type=str, default='dpmg', help='prefix name.')
 parser.add_argument('--data', type=str, default='her2st', help='dataset name: {"her2st","cscc"}.')
 parser.add_argument('--logger', type=str, default='results/direct', help='logger path.')
 parser.add_argument('--lr', type=float, default=1e-5, help='learning rate.')
@@ -74,7 +74,7 @@ parser.add_argument('--tag', type=str, default='5-7-2-8-4-16-32',
 parser.add_argument('--data_root', default='data', help='Directory containing her_hvg_cut_1000.npy and her2st/.')
 
 args = parser.parse_args()
-os.environ['HIST2ST_DATA_ROOT'] = os.path.abspath(args.data_root)
+os.environ['DPMG_DATA_ROOT'] = os.path.abspath(args.data_root)
 
 # -------------------------
 # Reproducibility
@@ -248,7 +248,7 @@ if args.task_type in ['pathway', 'gene_subset']:
 # =========================
 # 4. Model
 # =========================
-model = Hist2ST(
+model = DPMG(
     depth1=depth1, depth2=depth2, depth3=depth3,
     n_genes=num_targets, learning_rate=args.lr, label=label,
     kernel_size=kernel, patch_size=patch,

@@ -41,7 +41,7 @@ def main():
     data_root = Path(args.data_root).resolve()
     output_root = Path(args.output_dir).resolve()
     for fold in args.folds:
-        command = [sys.executable, str(root / 'HIST2ST_pretrain_finetune.py'),
+        command = [sys.executable, str(root / 'train_dpmg_two_stage.py'),
                    '--data', 'her2st', '--gpu', str(args.gpu), '--fold', str(fold),
                    '--seed', str(args.seed), '--data_root', str(data_root),
                    '--pretrain_epochs', str(args.pretrain_epochs),

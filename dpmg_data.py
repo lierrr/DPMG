@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 from PIL import ImageFile, Image
-from utils import read_tiff, get_data
-from graph_construction import calcADJ
-from pathway_utils import load_gene_list, load_pathway_definitions, resolve_gene_subset, score_pathways
+from dpmg_data_utils import read_tiff, get_data
+from dpmg_graph import calcADJ
+from dpmg_targets import load_gene_list, load_pathway_definitions, resolve_gene_subset, score_pathways
 from collections import defaultdict as dfd
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
@@ -59,7 +59,7 @@ class ViT_HER2ST(torch.utils.data.Dataset):
                  target_mode='gene', target_definitions_path=None, target_score_method='mean'):
         super(ViT_HER2ST, self).__init__()
         
-        data_root = os.environ.get('HIST2ST_DATA_ROOT', 'data')
+        data_root = os.environ.get('DPMG_DATA_ROOT', 'data')
         self.cnt_dir = os.path.join(data_root, 'her2st/data/ST-cnts')
         self.img_dir = os.path.join(data_root, 'her2st/data/ST-imgs')
         self.pos_dir = os.path.join(data_root, 'her2st/data/ST-spotfiles')
@@ -294,7 +294,7 @@ class ViT_SKIN(torch.utils.data.Dataset):
                  target_mode='gene', target_definitions_path=None, target_score_method='mean'):
         super(ViT_SKIN, self).__init__()
 
-        data_root = os.environ.get('HIST2ST_DATA_ROOT', 'data')
+        data_root = os.environ.get('DPMG_DATA_ROOT', 'data')
         self.dir = os.path.join(data_root, 'GSE144240_RAW') + os.sep
         self.r = 224//r
         self.target_mode = target_mode

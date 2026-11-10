@@ -3,7 +3,7 @@ import numpy as np
 import scanpy as sc
 import anndata as ad
 from tqdm import tqdm
-from dataset import ViT_HER2ST, ViT_SKIN
+from dpmg_data import ViT_HER2ST, ViT_SKIN
 from scipy.stats import pearsonr,spearmanr
 from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score as ari_score

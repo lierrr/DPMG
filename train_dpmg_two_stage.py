@@ -8,9 +8,9 @@ import pandas as pd
 import torch
 import pytorch_lightning as pl
 
-from utils import *
-from HIST2ST import *
-from predict import *
+from dpmg_data_utils import *
+from dpmg_model import *
+from dpmg_evaluation import *
 from torch.utils.data import DataLoader
 
 
@@ -40,16 +40,16 @@ def get_target_names(dataset):
 
 def build_model(model_kwargs):
     """
-    兼容不同版本 HIST2ST.py：
-    如果 Hist2ST 不支持某个参数，就自动忽略。
+    兼容不同版本 dpmg_model.py：
+    如果 DPMG 不支持某个参数，就自动忽略。
     """
-    sig = inspect.signature(Hist2ST.__init__)
+    sig = inspect.signature(DPMG.__init__)
     valid = set(sig.parameters.keys())
     final_kwargs = {k: v for k, v in model_kwargs.items() if k in valid}
     ignored = sorted(set(model_kwargs.keys()) - set(final_kwargs.keys()))
     if ignored:
-        print("[INFO] Ignored unsupported Hist2ST args:", ignored)
-    return Hist2ST(**final_kwargs)
+        print("[INFO] Ignored unsupported DPMG args:", ignored)
+    return DPMG(**final_kwargs)
 
 
 def make_trainer(max_epochs, gpu):
@@ -185,7 +185,7 @@ def main():
     parser.add_argument("--save_model", choices=["T", "F"], default="T")
 
     args = parser.parse_args()
-    os.environ['HIST2ST_DATA_ROOT'] = os.path.abspath(args.data_root)
+    os.environ['DPMG_DATA_ROOT'] = os.path.abspath(args.data_root)
 
     seed_everything(args.seed)
 
@@ -305,7 +305,7 @@ def main():
     gene_relation_matrix = None
 
     if args.use_disease_prior == "T":
-        from disease_prior_utils import load_gene_weights, load_gene_relation_matrix
+        from dpmg_priors import load_gene_weights, load_gene_relation_matrix
         gene_weights = load_gene_weights(target_names, args.disease_prior_file)
         gene_relation_matrix = load_gene_relation_matrix(target_names, args.disease_relation_file)
         print("[DISEASE PRIOR] enabled")
