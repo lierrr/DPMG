@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.idea/
+.vscode/
+.env
+.env.*
+data/
+results/
+logs/
+model/
+pretrain_finetune_results/
+lightning_logs/
+*.ckpt
+*.pt
+*.pth
+*.log

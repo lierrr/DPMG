@@ -1,0 +1,6 @@
+gene,disease_weight,category
+GNAS,1.00,signaling_anchor
+FASN,1.08,lipid_metabolism
+SCD,1.08,lipid_metabolism
+MYL12B,1.03,cytoskeleton
+FN1,1.12,ecm_stroma

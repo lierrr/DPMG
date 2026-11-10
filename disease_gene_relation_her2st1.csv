@@ -1,0 +1,5 @@
+gene_a,gene_b,relation_weight,relation_type
+FASN,SCD,1.00,lipid_metabolism
+FN1,MYL12B,0.35,ecm_cytoskeleton
+GNAS,FN1,0.05,signaling_stroma
+GNAS,MYL12B,0.05,signaling_cytoskeleton
